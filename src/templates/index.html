@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID Toy</title>
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/font-awesome.min.css') }}" rel="stylesheet">
+    <script src="{{ url_for('static', filename='js/socket.io.min.js') }}" defer></script>
+    <script src="{{ url_for('static', filename='js/alpine.min.js') }}" defer></script>
+</head>
+<body x-data="initAudioApp()" x-init="initialize()">
+    <div class="container mb-5 mt-5">
+        <!-- Flash Messages -->
+        <template x-for="(flash, index) in flashMessages" :key="index">
+            <div class="alert" :class="`alert-${flash.category} alert-dismissible fade show mb-4`" role="alert">
+                <span x-text="flash.message"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        </template>
+
+        <!-- Playback Controls -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Playback Controls</h2>
+            </div>
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-3">
+                        <button class="btn btn-danger w-30" @click="stopPlayback()" 
+                                :disabled="!currentTrack">
+                            <i class="fa-solid fa-stop"></i> Stop Playback
+                        </button>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <template x-if="currentTrack">
+                                <div>
+                                    <span class="text-muted">Now Playing:</span>
+                                    <span class="ms-2" x-text="currentTrack"></span>
+                                </div>
+                            </template>
+                            <template x-if="!currentTrack">
+                                <div class="text-muted">No track playing</div>
+                            </template>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex align-items-center justify-content-end">
+                            <label for="volumeControl" class="me-2">Volume:</label>
+                            <input type="range" class="form-range w-50" id="volumeControl" 
+                                   x-model="volume" @change="setVolume()" 
+                                   min="0" max="100" step="1">
+                            <span class="ms-2" x-text="`${volume}%`"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Row: Upload Audio & Register Tag -->
+        <div class="row">
+            <!-- Upload Audio Form -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">Upload Audio</h2>
+                    </div>
+                    <div class="card-body">
+                        <form method="post" :action="uploadUrl" enctype="multipart/form-data">
+                            <div class="mb-3">
+                                <input class="form-control" type="file" name="file" accept="audio/*" required>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-upload"></i> Upload
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Register Tag Form -->
+            <div class="col-md-6 mb-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="h5 mb-0">Register Tag</h2>
+                    </div>
+                    <div class="card-body">
+                        <form x-on:submit.prevent="handleRegistration">
+                            <div class="mb-3">
+                                <select class="form-select" x-model="selectedAudioFile" required id="audioSelect">
+                                    <option value="">Select audio file</option>
+                                    <template x-for="audio in audioFiles" :key="audio">
+                                        <option x-bind:value="audio" x-text="audio"></option>
+                                    </template>
+                                </select>
+                            </div>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fa-solid fa-tag"></i> Scan & Register Tag
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Current Mappings Table -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Mappings</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="mappingTable">
+                        <thead>
+                            <tr>
+                                <th>Tag ID</th>
+                                <th>Audio File</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="[tagId, audioName] in Object.entries(mappings)" :key="tagId">
+                                <tr>
+                                    <td class="align-middle text-nowrap pe-4" x-text="tagId"></td>
+                                    <td class="align-middle w-100" x-text="audioName"></td>
+                                    <td class="align-middle text-end">
+                                        <button class="btn btn-danger btn-sm" x-on:click="unregisterTag(tagId)">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audio Files Table -->
+        <div class="card">
+            <div class="card-header">
+                <h2 class="h5 mb-0">Audio Files</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table" id="audioTable">
+                        <thead>
+                            <tr>
+                                <th>Audio File</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="audio in audioFiles" :key="audio">
+                                <tr>
+                                    <td class="align-middle text-nowrap">
+                                        <audio :id="`audio_${audio}`" preload="none" style="display:none;">
+                                            <source :src="`${serveAudioUrl}/${audio}`" type="audio/mpeg">
+                                        </audio>
+                                        <button class="btn btn-sm me-2" style="width: 2rem;"
+                                                x-on:click="togglePlayPause(`audio_${audio}`, $el)">
+                                            <i class="fa-solid fa-play"></i>
+                                        </button>
+                                        <span x-text="audio"></span>
+                                    </td>
+                                    <td class="align-middle text-end">
+                                        <button class="btn btn-danger btn-sm" x-on:click="deleteFile(audio)">
+                                            <i class="fa-solid fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Modal -->
+    <div class="modal fade" id="scanModal" data-bs-backdrop="static" tabindex="-1" aria-hidden="true" x-ref="scanModal">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-body text-center p-4">
+                    <div class="mb-3">
+                        <i class="fa-solid fa-tag fa-3x text-primary"></i>
+                    </div>
+                    <h5>Please scan a tag</h5>
+                    <p class="text-muted mb-0">Hold an RFID tag near the reader...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function initAudioApp() {
+            return {
+                // Data
+                socket: null,
+                uploadUrl: "{{ url_for('upload_file') }}",
+                serveAudioUrl: "{{ url_for('serve_audio', filename='') }}".slice(0, -1),
+                selectedAudioFile: '',
+                audioFiles: {{ audio_files|tojson|safe }},
+                mappings: {{ mappings|tojson|safe }},
+                flashMessages: [{% for category, message in get_flashed_messages(with_categories=true) %}{category:"{{ category }}", message:"{{ message }}"},{% endfor %}],
+                volume: 80,
+                currentTrack: null,
+
+                // Lifecycle
+                initialize() {
+                    this.socket = io();
+                    this.socket.on('connect', () => {});
+                    this.socket.on('disconnect', () => {});
+                    
+                    this.socket.on('refresh_data', (data) => {
+                        if (data.mappings) {
+                            this.mappings = data.mappings;
+                        }
+                        if (data.audio_files) {
+                            this.audioFiles = data.audio_files;
+                        }
+                    });
+
+                    this.socket.on('track_update', (data) => {
+                        this.currentTrack = data.current_track;
+                    });
+                },
+
+                // Methods
+                stopPlayback() {
+                    this.socket.emit('stop_playback', {}, (response) => {
+                        this.showAlert(response.status, response.message);
+                        this.currentTrack = null;
+                    });
+                },
+
+                setVolume() {
+                    this.socket.emit('set_volume', { level: this.volume }, (response) => {
+                        if (response.status === 'success') {
+                            this.volume = response.volume;
+                        } else {
+                            this.showAlert('error', response.message);
+                        }
+                    });
+                },
+
+                // Methods
+                handleRegistration() {
+                    if (!this.selectedAudioFile) return;
+                    const modalEl = new bootstrap.Modal(this.$refs.scanModal);
+                    modalEl.show();
+
+                    this.socket.emit('register_tag', { audio_file: this.selectedAudioFile }, (response) => {
+                        modalEl.hide();
+                        this.showAlert(response.status, response.message);
+                        if (response.status === 'success') {
+                            this.mappings = response.mappings;
+                        }
+                    });
+                },
+
+                unregisterTag(tagId) {
+                    this.socket.emit('unregister_tag', { tag_id: tagId }, (response) => {
+                        this.showAlert(response.status, response.message);
+                        if (response.status === 'success') {
+                            this.mappings = response.mappings;
+                        }
+                    });
+                },
+
+                deleteFile(filename) {
+                    this.socket.emit('delete_file', { filename }, (response) => {
+                        this.showAlert(response.status, response.message);
+                        if (response.status === 'success') {
+                            this.mappings = response.mappings;
+                            this.audioFiles = response.audio_files;
+                        }
+                    });
+                },
+
+                togglePlayPause(audioId, buttonElem) {
+                    const icon = buttonElem.querySelector('i');
+                    const audioElem = document.getElementById(audioId);
+                    if (audioElem.paused) {
+                        audioElem.play();
+                        icon.classList.remove('fa-play');
+                        icon.classList.add('fa-pause');
+                    } else {
+                        audioElem.pause();
+                        icon.classList.remove('fa-pause');
+                        icon.classList.add('fa-play');
+                    }
+                },
+
+                showAlert(category, message) {
+                    this.flashMessages.unshift({ category, message });
+                    setTimeout(() => {
+                        this.flashMessages.pop();
+                    }, 3000);
+                }
+            };
+        }
+    </script>
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+</body>
+</html>
