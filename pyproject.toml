@@ -3,5 +3,11 @@ name = "broniebox"
 version = "0.1.0"
 description = "RFID music toy"
 readme = "README.md"
-requires-python = ">=3.12"
-dependencies = []
+requires-python = ">=3.11"
+dependencies = [
+    "flask>=3.1.0",
+    "flask-socketio>=5.5.1",
+    "mfrc522>=0.0.7",
+    "rpi-gpio>=0.7.1",
+    "simpleaudio>=1.0.4",
+]
