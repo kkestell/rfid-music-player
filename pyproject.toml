@@ -1,0 +1,7 @@
+[project]
+name = "broniebox"
+version = "0.1.0"
+description = "RFID music toy"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = []
