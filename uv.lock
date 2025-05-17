@@ -20,7 +20,7 @@ wheels = [
 ]
 
 [[package]]
-name = "broniebox"
+name = "rfid-music-player"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

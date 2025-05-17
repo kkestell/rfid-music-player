@@ -1,5 +1,5 @@
 [project]
-name = "broniebox"
+name = "rfid-music-player"
 version = "0.1.0"
 description = "RFID music toy"
 readme = "README.md"
