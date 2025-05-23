@@ -1,8 +1,8 @@
-# RFID Toy Build Documentation
+# Music Box Build Documentation
 
 ## Overview
 
-The RFID toy is a simple music and audiobook player that plays audio files when specific RFID tags are detected. Place a tag on top of the device, and it plays the associated audio file through its speakers. The project uses a Raspberry Pi Zero W, an Adafruit Speaker Bonnet for audio, and an RC522 RFID reader to detect tags. A 60-LED NeoPixel ring controlled by an Arduino Nano provides visual feedback. The components are housed in a modified bluetooth speaker case.
+Music Box is a simple music and audiobook player that plays audio files when specific RFID tags are detected. Place a tag on top of the device, and it plays the associated audio file through its speakers. The project uses a Raspberry Pi Zero W, an Adafruit Speaker Bonnet for audio, and an RC522 RFID reader to detect tags. A 60-LED NeoPixel ring controlled by an Arduino Nano provides visual feedback. The components are housed in a modified bluetooth speaker case.
 
 ## Hardware Components
 
@@ -23,14 +23,14 @@ Mount the Speaker Bonnet onto the Raspberry Pi Zero W's GPIO header. Press down 
 Connect the RC522 RFID reader to the Speaker Bonnet:
 
 | RC522 Pin | Speaker Bonnet Label | Physical Pin (Pi) | BCM GPIO |
-|-----------|---------------------|------------------|-----------|
-| SDA       | CEO                 | Pin 24           | GPIO 8    |
-| SCK       | CLK                 | Pin 23           | GPIO 11   |
-| MOSI      | MOSI                | Pin 19           | GPIO 10   |
-| MISO      | MISO                | Pin 21           | GPIO 9    |
-| GND       | GND                 | Pin 6            | -         |
-| RST       | Any free GPIO       | Pin 22           | GPIO 25   |
-| 3.3V      | 3.3V                | Pin 1            | -         |
+|-----------|----------------------|-------------------|----------|
+| SDA       | CEO                  | Pin 24            | GPIO 8   |
+| SCK       | CLK                  | Pin 23            | GPIO 11  |
+| MOSI      | MOSI                 | Pin 19            | GPIO 10  |
+| MISO      | MISO                 | Pin 21            | GPIO 9   |
+| GND       | GND                  | Pin 6             | -        |
+| RST       | Any free GPIO        | Pin 22            | GPIO 25  |
+| 3.3V      | 3.3V                 | Pin 1             | -        |
 
 Note: Leave the IRQ pin unconnected.
 
@@ -147,8 +147,8 @@ Clone and set up the main application:
 
 ```bash
 cd ~/
-git clone https://github.com/kkestell/rfid-toy
-cd rfid-toy
+git clone https://github.com/kkestell/music-box
+cd music-box
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
@@ -165,18 +165,18 @@ python server.py
 
 ### Systemd Unit
 
-`/etc/systemd/system/rfid-music-player.service`:
+`/etc/systemd/system/music-box.service`:
 
 ```ini
 [Unit]
-Description=BronieBox Server
+Description=Music Box Server
 After=network.target
 
 [Service]
 Type=simple
 User=kyle
-ExecStart=/home/kyle/rfid-music-player/.venv/bin/python /home/kyle/rfid-music-player/src/server.py
-WorkingDirectory=/home/kyle/rfid-music-player/src
+ExecStart=/home/kyle/music-box/.venv/bin/python /home/kyle/music-box/src/server.py
+WorkingDirectory=/home/kyle/music-box/src
 Restart=always
 RestartSec=3
 
@@ -186,8 +186,8 @@ WantedBy=multi-user.target
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable rfid-music-player
-sudo systemctl start rfid-music-player
-sudo systemctl status rfid-music-player
-journalctl -u rfid-music-player
+sudo systemctl enable music-box
+sudo systemctl start music-box
+sudo systemctl status music-box
+journalctl -u music-box
 ```

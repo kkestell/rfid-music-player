@@ -1,7 +1,7 @@
 [project]
-name = "rfid-music-player"
+name = "music-box"
 version = "0.1.0"
-description = "RFID music toy"
+description = "RFID Music Box"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

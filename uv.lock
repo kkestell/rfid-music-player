@@ -20,7 +20,7 @@ wheels = [
 ]
 
 [[package]]
-name = "rfid-music-player"
+name = "music-box"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
